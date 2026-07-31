@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QQ机器人管理后台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 30px; color: #4cc9f0; }
+
+        /* 提示框 */
+        .tip {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        .tip-success { background: rgba(74, 222, 128, 0.1); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); }
+        .tip-warning { background: rgba(251, 191, 36, 0.1); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+        .tip-error { background: rgba(248, 113, 113, 0.1); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
+
+        /* 标签页 */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #16213e;
+            flex-wrap: wrap;
+        }
+        .tab-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .tab-item:hover { background: #16213e; }
+        .tab-item.active {
+            background: #16213e;
+            color: #4cc9f0;
+            border-bottom: 2px solid #4cc9f0;
+            margin-bottom: -2px;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* 卡片 */
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .card h2 {
+            margin-bottom: 16px;
+            color: #4cc9f0;
+            font-size: 18px;
+            border-bottom: 1px solid #0f3460;
+            padding-bottom: 8px;
+        }
+
+        /* 状态网格 */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+        .status-item {
+            background: #0f3460;
+            padding: 16px;
+            border-radius: 8px;
+        }
+        .status-item .label { font-size: 12px; color: #aaa; margin-bottom: 6px; }
+        .status-item .value { font-size: 16px; font-weight: bold; }
+        .online { color: #4ade80; }
+        .offline { color: #f87171; }
+
+        /* 表单 */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #ccc;
+            font-size: 14px;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            background: #0f3460;
+            border: 1px solid #1e40af;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+        .form-group .hint { font-size: 12px; color: #888; margin-top: 4px; }
+
+        /* 按钮 */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-primary { background: #4cc9f0; color: #000; }
+        .btn-danger { background: #f87171; color: #fff; }
+        .btn-success { background: #4ade80; color: #000; }
+        .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+        /* 列表 */
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: #0f3460;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .list-item .key { font-weight: 500; color: #4cc9f0; }
+        .list-item .value { color: #ccc; font-size: 14px; flex: 1; margin: 0 12px; }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        @media (max-width: 768px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 QQ机器人管理后台</h1>
+
+        <div id="tip" class="tip"></div>
+
+        <div id="loading" class="loading">正在加载后台数据...</div>
+
+        <div id="main-content" style="display: none;">
+            <!-- 标签页导航 -->
+            <div class="tabs">
+                <div class="tab-item active" data-tab="status">运行状态</div>
+                <div class="tab-item" data-tab="model">模型管理</div>
+                <div class="tab-item" data-tab="chat">对话配置</div>
+                <div class="tab-item" data-tab="security">安全设置</div>
+                <div class="tab-item" data-tab="privacy">隐私保护</div>
+            </div>
+
+            <!-- 运行状态 -->
+            <div class="tab-content active" id="tab-status">
+                <div class="card">
+                    <h2>📊 实时运行状态</h2>
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <div class="label">机器人状态</div>
+                            <div class="value" id="bot_status">--</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="label">机器人ID</div>
+                            <div class="value" id="bot_id">--</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="label">当前模型</div>
+                            <div class="value" id="current_model">--</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="label">活跃用户数</div>
+                            <div class="value" id="user_count">--</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="label">已处理消息</div>
+                            <div class="value" id="msg_count">--</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="label">Ollama地址</div>
+                            <div class="value" id="ollama_url">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>⚡ 快捷操作</h2>
+                    <div class="btn-row">
+                        <button class="btn btn-primary" onclick="refreshAll()">刷新全部数据</button>
+                        <button class="btn btn-danger" onclick="clearAllContext()">清空所有用户上下文</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模型管理 -->
+            <div class="tab-content" id="tab-model">
+                <div class="card">
+                    <h2>🤖 模型切换</h2>
+                    <div class="form-group">
+                        <label>选择运行模型</label>
+                        <select id="model_select"></select>
+                        <div class="hint">切换后所有用户上下文将自动清空，立即生效</div>
+                    </div>
+                    <button class="btn btn-success" onclick="switchModel()">确认切换模型</button>
+                </div>
+
+                <div class="card">
+                    <h2>⚙️ 模型基础配置</h2>
+                    <div class="form-group">
+                        <label>默认启动模型</label>
+                        <input type="text" id="cfg_default_model">
+                        <div class="hint">重启程序后生效</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Ollama接口地址</label>
+                        <input type="text" id="cfg_ollama_url">
+                        <div class="hint">重启程序后生效</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveBaseConfig()">保存配置</button>
+                </div>
+            </div>
+
+            <!-- 对话配置 -->
+            <div class="tab-content" id="tab-chat">
+                <div class="card">
+                    <h2>💬 全局对话设置</h2>
+                    <div class="form-group">
+                        <label>全局系统提示词（人设）</label>
+                        <textarea id="cfg_system_prompt"></textarea>
+                        <div class="hint">修改后立即生效，新对话会使用新设定</div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>单用户最大上下文轮数</label>
+                            <input type="number" id="cfg_max_context">
+                        </div>
+                        <div class="form-group">
+                            <label>单条消息最大长度</label>
+                            <input type="number" id="cfg_msg_max_length">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="cfg_group_at_filter"> 群聊仅被@时回复
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveChatConfig()">保存对话配置</button>
+                </div>
+
+                <div class="card">
+                    <h2>🔑 精确关键词回复</h2>
+                    <div id="exact_keyword_list"></div>
+                    <div class="form-row" style="margin-top: 16px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="new_exact_key" placeholder="关键词（完全匹配）">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="new_exact_reply" placeholder="回复内容">
+                        </div>
+                    </div>
+                    <button class="btn btn-success" onclick="addExactKeyword()">添加关键词</button>
+                </div>
+
+                <div class="card">
+                    <h2>🔑 模糊关键词回复</h2>
+                    <div id="fuzzy_keyword_list"></div>
+                    <div class="form-row" style="margin-top: 16px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="new_fuzzy_key" placeholder="关键词（包含即触发）">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="new_fuzzy_reply" placeholder="回复内容">
+                        </div>
+                    </div>
+                    <button class="btn btn-success" onclick="addFuzzyKeyword()">添加关键词</button>
+                </div>
+            </div>
+
+            <!-- 安全设置 -->
+            <div class="tab-content" id="tab-security">
+                <div class="card">
+                    <h2>🚦 消息限流</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>限流时间窗口（秒）</label>
+                            <input type="number" id="cfg_rate_limit_seconds">
+                        </div>
+                        <div class="form-group">
+                            <label>窗口内最大消息数</label>
+                            <input type="number" id="cfg_rate_limit_max">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="cfg_admin_bypass"> 管理员不受限流约束
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveSecurityConfig()">保存限流配置</button>
+                </div>
+
+                <div class="card">
+                    <h2>🚫 敏感词过滤</h2>
+                    <div class="form-group">
+                        <label>敏感词列表（每行一个）</label>
+                        <textarea id="cfg_sensitive_words" style="min-height: 150px;"></textarea>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveSensitiveWords()">保存敏感词</button>
+                </div>
+            </div>
+
+            <!-- 隐私保护 -->
+            <div class="tab-content" id="tab-privacy">
+                <div class="card">
+                    <h2>🔒 隐私开关</h2>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="cfg_privacy_enable"> 启用全局隐私保护模式
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="cfg_privacy_mask_id"> 日志中掩码用户ID
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="cfg_privacy_mask_content"> 自动掩码消息中的敏感信息
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="cfg_privacy_encrypt"> 加密存储对话上下文
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" onclick="savePrivacyConfig()">保存隐私设置</button>
+                </div>
+
+                <div class="card">
+                    <h2>⏱️ 自动清理策略</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>上下文保留时长（小时）</label>
+                            <input type="number" id="cfg_privacy_max_age">
+                        </div>
+                        <div class="form-group">
+                            <label>日志保留天数</label>
+                            <input type="number" id="cfg_log_retention">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveCleanupConfig()">保存清理策略</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const AUTH_HEADER = "{{AUTH_HEADER}}";
+        let currentConfig = {};
+
+        // ========== 通用工具函数 ==========
+        function showTip(msg, type = "success") {
+            const tip = document.getElementById("tip");
+            tip.className = `tip tip-${type}`;
+            tip.textContent = msg;
+            tip.style.display = "block";
+            setTimeout(() => { tip.style.display = "none"; }, 4000);
+        }
+
+        async function request(api, method = "GET", body = null) {
+            const options = {
+                method: method,
+                headers: {
+                    "Authorization": AUTH_HEADER,
+                    "Content-Type": "application/json"
+                }
+            };
+            if (body) options.body = JSON.stringify(body);
+            try {
+                const res = await fetch(api, options);
+                if (res.status === 401) {
+                    showTip("认证失败，请刷新页面重新登录", "error");
+                    throw new Error("Unauthorized");
+                }
+                return await res.json();
+            } catch (e) {
+                const loadingEl = document.getElementById("loading");
+                if (loadingEl.style.display !== "none") {
+                    loadingEl.innerHTML = `
+                        <p style="color:#f87171; margin-bottom:10px;">无法连接到后台接口</p>
+                        <p style="font-size:12px; color:#888; text-align:left; max-width:300px; margin:0 auto;">
+                            请检查：<br>
+                            1. 机器人程序是否正常启动<br>
+                            2. 访问地址是否为 http://127.0.0.1:8080<br>
+                            3. 认证账号密码是否正确
+                        </p>
+                    `;
+                }
+                throw e;
+            }
+        }
+
+        // ========== 标签页切换 ==========
+        document.querySelectorAll(".tab-item").forEach(tab => {
+            tab.addEventListener("click", () => {
+                document.querySelectorAll(".tab-item").forEach(t => t.classList.remove("active"));
+                document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+                tab.classList.add("active");
+                document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
+            });
+        });
+
+        // ========== 状态加载 ==========
+        async function loadStatus() {
+            try {
+                const data = await request("/api/status");
+                document.getElementById("bot_status").textContent = data.bot_online ? "在线" : "离线";
+                document.getElementById("bot_status").className = "value " + (data.bot_online ? "online" : "offline");
+                document.getElementById("bot_id").textContent = data.bot_id;
+                document.getElementById("current_model").textContent = data.current_model;
+                document.getElementById("user_count").textContent = data.user_count;
+                document.getElementById("msg_count").textContent = data.processed_msg_count;
+                document.getElementById("ollama_url").textContent = data.ollama_url;
+            } catch (e) {
+                console.error("加载状态失败", e);
+            }
+        }
+
+        // ========== 配置加载与渲染 ==========
+        async function loadConfig() {
+            try {
+                const cfg = await request("/api/config");
+                currentConfig = cfg;
+
+                // 基础配置
+                document.getElementById("cfg_default_model").value = cfg.DEFAULT_MODEL;
+                document.getElementById("cfg_ollama_url").value = cfg.OLLAMA_URL;
+
+                // 对话配置
+                document.getElementById("cfg_system_prompt").value = cfg.GLOBAL_SYSTEM_PROMPT;
+                document.getElementById("cfg_max_context").value = cfg.MAX_CONTEXT_LENGTH;
+                document.getElementById("cfg_msg_max_length").value = cfg.MESSAGE_MAX_LENGTH;
+                document.getElementById("cfg_group_at_filter").checked = cfg.ENABLE_GROUP_AT_FILTER;
+
+                // 安全配置
+                document.getElementById("cfg_rate_limit_seconds").value = cfg.RATE_LIMIT_SECONDS;
+                document.getElementById("cfg_rate_limit_max").value = cfg.RATE_LIMIT_MAX_COUNT;
+                document.getElementById("cfg_admin_bypass").checked = cfg.ADMIN_BYPASS_LIMIT;
+                document.getElementById("cfg_sensitive_words").value = cfg.SENSITIVE_WORDS.join("\n");
+
+                // 隐私配置
+                document.getElementById("cfg_privacy_enable").checked = cfg.PRIVACY_ENABLE_MODE;
+                document.getElementById("cfg_privacy_mask_id").checked = cfg.PRIVACY_MASK_USER_ID_IN_LOGS;
+                document.getElementById("cfg_privacy_mask_content").checked = cfg.PRIVACY_MASK_SENSITIVE_CONTENT;
+                document.getElementById("cfg_privacy_encrypt").checked = cfg.PRIVACY_ENCRYPT_CONTEXT_STORAGE;
+                document.getElementById("cfg_privacy_max_age").value = Math.round(cfg.PRIVACY_MAX_CONTEXT_AGE / 3600);
+                document.getElementById("cfg_log_retention").value = cfg.PRIVACY_LOG_RETENTION_DAYS;
+
+                // 渲染关键词列表
+                renderKeywordList("exact", cfg.KEYWORD_EXACT);
+                renderKeywordList("fuzzy", cfg.KEYWORD_FUZZY);
+
+                // 加载模型列表
+                loadModelList();
+            } catch (e) {
+                console.error("加载配置失败", e);
+                showTip("加载配置失败", "error");
+            }
+        }
+
+        // ========== 模型列表 ==========
+        async function loadModelList() {
+            try {
+                const res = await request("/api/models");
+                const select = document.getElementById("model_select");
+                select.innerHTML = "";
+                if (res.success && res.models) {
+                    res.models.forEach(m => {
+                        const option = document.createElement("option");
+                        option.value = m;
+                        option.textContent = m;
+                        if (m === res.current) option.selected = true;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (e) {
+                console.error("加载模型列表失败", e);
+                document.getElementById("model_select").innerHTML = 
+                    `<option value="${currentConfig.DEFAULT_MODEL}">${currentConfig.DEFAULT_MODEL}</option>`;
+            }
+        }
+
+        // ========== 关键词渲染 ==========
+        function renderKeywordList(type, data) {
+            const container = document.getElementById(type + "_keyword_list");
+            container.innerHTML = "";
+            Object.entries(data).forEach(([key, value]) => {
+                const item = document.createElement("div");
+                item.className = "list-item";
+                item.innerHTML = `
+                    <span class="key">${key}</span>
+                    <span class="value">${value}</span>
+                    <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="deleteKeyword('${type}', '${key.replace(/'/g, "\\'")}')">删除</button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // ========== 保存配置通用方法 ==========
+        async function saveConfigPatch(patch, successMsg = "保存成功") {
+            try {
+                const res = await request("/api/config", "POST", patch);
+                if (res.success) {
+                    if (res.need_restart && res.need_restart.length > 0) {
+                        showTip(`${successMsg}，以下配置需重启生效：${res.need_restart.join("、")}`, "warning");
+                    } else {
+                        showTip(successMsg + "，已热更新生效", "success");
+                    }
+                    await loadConfig();
+                    await loadStatus();
+                    return true;
+                } else {
+                    showTip(res.msg || "保存失败", "error");
+                    return false;
+                }
+            } catch (e) {
+                showTip("保存失败，网络异常", "error");
+                return false;
+            }
+        }
+
+        // ========== 各模块保存方法 ==========
+        function saveBaseConfig() {
+            saveConfigPatch({
+                DEFAULT_MODEL: document.getElementById("cfg_default_model").value,
+                OLLAMA_URL: document.getElementById("cfg_ollama_url").value
+            }, "基础配置保存成功");
+        }
+
+        function saveChatConfig() {
+            saveConfigPatch({
+                GLOBAL_SYSTEM_PROMPT: document.getElementById("cfg_system_prompt").value,
+                MAX_CONTEXT_LENGTH: parseInt(document.getElementById("cfg_max_context").value),
+                MESSAGE_MAX_LENGTH: parseInt(document.getElementById("cfg_msg_max_length").value),
+                ENABLE_GROUP_AT_FILTER: document.getElementById("cfg_group_at_filter").checked
+            }, "对话配置保存成功");
+        }
+
+        function saveSecurityConfig() {
+            saveConfigPatch({
+                RATE_LIMIT_SECONDS: parseInt(document.getElementById("cfg_rate_limit_seconds").value),
+                RATE_LIMIT_MAX_COUNT: parseInt(document.getElementById("cfg_rate_limit_max").value),
+                ADMIN_BYPASS_LIMIT: document.getElementById("cfg_admin_bypass").checked
+            }, "安全配置保存成功");
+        }
+
+        function saveSensitiveWords() {
+            const words = document.getElementById("cfg_sensitive_words").value
+                .split("\n")
+                .map(w => w.trim())
+                .filter(w => w.length > 0);
+            saveConfigPatch({ SENSITIVE_WORDS: words }, "敏感词保存成功");
+        }
+
+        function savePrivacyConfig() {
+            saveConfigPatch({
+                PRIVACY_ENABLE_MODE: document.getElementById("cfg_privacy_enable").checked,
+                PRIVACY_MASK_USER_ID_IN_LOGS: document.getElementById("cfg_privacy_mask_id").checked,
+                PRIVACY_MASK_SENSITIVE_CONTENT: document.getElementById("cfg_privacy_mask_content").checked,
+                PRIVACY_ENCRYPT_CONTEXT_STORAGE: document.getElementById("cfg_privacy_encrypt").checked
+            }, "隐私设置保存成功");
+        }
+
+        function saveCleanupConfig() {
+            saveConfigPatch({
+                PRIVACY_MAX_CONTEXT_AGE: parseInt(document.getElementById("cfg_privacy_max_age").value) * 3600,
+                PRIVACY_LOG_RETENTION_DAYS: parseInt(document.getElementById("cfg_log_retention").value)
+            }, "清理策略保存成功");
+        }
+
+        // ========== 关键词增删 ==========
+        function addExactKeyword() {
+            const key = document.getElementById("new_exact_key").value.trim();
+            const reply = document.getElementById("new_exact_reply").value.trim();
+            if (!key || !reply) {
+                showTip("请填写完整的关键词和回复内容", "error");
+                return;
+            }
+            const newKeywords = { ...currentConfig.KEYWORD_EXACT, [key]: reply };
+            saveConfigPatch({ KEYWORD_EXACT: newKeywords }, "关键词添加成功");
+            document.getElementById("new_exact_key").value = "";
+            document.getElementById("new_exact_reply").value = "";
+        }
+
+        function addFuzzyKeyword() {
+            const key = document.getElementById("new_fuzzy_key").value.trim();
+            const reply = document.getElementById("new_fuzzy_reply").value.trim();
+            if (!key || !reply) {
+                showTip("请填写完整的关键词和回复内容", "error");
+                return;
+            }
+            const newKeywords = { ...currentConfig.KEYWORD_FUZZY, [key]: reply };
+            saveConfigPatch({ KEYWORD_FUZZY: newKeywords }, "关键词添加成功");
+            document.getElementById("new_fuzzy_key").value = "";
+            document.getElementById("new_fuzzy_reply").value = "";
+        }
+
+        function deleteKeyword(type, key) {
+            const configKey = type === "exact" ? "KEYWORD_EXACT" : "KEYWORD_FUZZY";
+            const newKeywords = { ...currentConfig[configKey] };
+            delete newKeywords[key];
+            saveConfigPatch({ [configKey]: newKeywords }, "关键词已删除");
+        }
+
+        // ========== 快捷操作 ==========
+        async function switchModel() {
+            const model = document.getElementById("model_select").value;
+            if (!model) return;
+            if (!confirm(`确定要切换到模型 ${model} 吗？切换后所有用户上下文将被清空。`)) return;
+            
+            try {
+                const res = await request("/api/switch-model", "POST", { model: model });
+                if (res.success) {
+                    showTip(res.msg, "success");
+                    await loadStatus();
+                    await loadModelList();
+                } else {
+                    showTip(res.msg || "切换失败", "error");
+                }
+            } catch (e) {
+                showTip("切换模型失败，网络异常", "error");
+            }
+        }
+
+        async function clearAllContext() {
+            if (!confirm("确定要清空所有用户的对话上下文吗？此操作不可撤销。")) return;
+            try {
+                const res = await request("/api/clear-all-context", "POST", {});
+                if (res.success) {
+                    showTip("所有上下文已清空", "success");
+                    loadStatus();
+                } else {
+                    showTip(res.msg || "操作失败", "error");
+                }
+            } catch (e) {
+                showTip("操作失败", "error");
+            }
+        }
+
+        function refreshAll() {
+            Promise.all([loadStatus(), loadConfig()]).then(() => {
+                showTip("数据已刷新", "success");
+            });
+        }
+
+        // ========== 页面初始化 ==========
+        window.onload = async function() {
+            try {
+                await Promise.all([loadStatus(), loadConfig()]);
+                document.getElementById("loading").style.display = "none";
+                document.getElementById("main-content").style.display = "block";
+            } catch (e) {
+                console.error("初始化失败", e);
+            }
+        };
+    </script>
+</body>
+</html>
