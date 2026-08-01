@@ -7,7 +7,7 @@
 ## 已知问题  
 **严重** :暂未发现  
 **中等** :在没有任何对话的前提下，程序会每30分钟自动断开并重连一次，每2个小时会高频出现"Token即将过期，开始刷新..."和"Token已刷新"字样，最后报错4009断开并自动重连后恢复正常（以下为部分日志截图）  
-<img src="./images/3.png" alt="部分日志截图" width="300"><img src="./images/4.png" alt="部分日志截图" width="300">  
+<img src="./images/3.png" alt="部分日志截图" width="300"> <img src="./images/4.png" alt="部分日志截图" width="300">  
 **轻微** :  
 1.在后台管理网站中会出现文字和按钮不在同一行上的问题（如图所示）  
 <img src="./images/2.png" alt="网站部分页面截图" width="500">  
@@ -34,11 +34,17 @@
 **该方法适用于Windows平台**  
 1.访问QQ开放平台（ https://q.qq.com/#/ ）注册并登录账号  
 2.在页面左侧点击“机器人”，再点击页面中间的“去创建或管理我的QQ机器人  
+<img src="./images/5.png" alt="方法" width="300">  
 3.在页面右上角点击“创建机器人”，并按提示创建机器人账号  
+<img src="./images/6.png" alt="方法" width="300">  
+<img src="./images/7.png" alt="方法" width="300">  
 4.在“设置AI服务”中点击页面右上角的“稍后连接”  
+<img src="./images/8.png" alt="方法" width="300">  
 5.在当前页面选择你所创建的机器人  
-7.安装Ollama  
+<img src="./images/11.png" alt="方法" width="300">  
 6.选择“开发设置”，记下右侧的AppID和AppSecret  
+<img src="./images/9.png" alt="方法" width="300">  
+7.安装Ollama  
 8.下载Release中的QQBot.zip并解压到任意目录，保证压缩包中的文件在同一目录下  
 9.双击运行其中的main.exe，首次运行会创建以下文件：  
 -logs:日志存放地址  
@@ -47,6 +53,7 @@
 -config配置说明.txt:对config.json中的每一项配置的解释说明  
 -contexts.json:存储所有用户的对话上下文记录  
 10.打开config.json，填写刚才记下的AppID和AppSecret，并填写Ollama默认使用的模型  
+<img src="./images/10.png" alt="方法" width="300">  
 11.运行Ollama程序或在cmd窗口中运行:ollama serve  
 12.再次双击运行main.exe,如填写均正确控制台会显示“✅ 机器人已上线！ID：123***1234”字样  
 注：如需填写管理员OpenID，可通过QQ向该机器人发送消息，之后就能在控制台的用户后面找到一串由数字和字母组成的用户标签，复制这标签填写到config.json中的ADMIN_IDS即可
