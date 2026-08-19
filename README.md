@@ -55,4 +55,4 @@
 <img src="./images/10.png" alt="方法" width="300">  
 11.运行Ollama程序或在cmd窗口中运行:ollama serve  
 12.再次双击运行main.exe,如填写均正确控制台会显示“✅ 机器人已上线！ID：123***1234”字样  
-注：如需填写管理员OpenID，可通过QQ向该机器人发送消息，之后就能在控制台的用户后面找到一串由数字和字母组成的用户标签，复制这标签填写到config.json中的ADMIN_IDS即可
+注：如需填写管理员OpenID，可通过QQ向该机器人发送消息，之后就能在控制台的用户后面找到一串字符串组成的用户标签，复制这标签填写到config.json中的ADMIN_IDS即可
